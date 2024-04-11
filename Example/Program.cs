@@ -1,13 +1,17 @@
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Identity;
 using Example.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
@@ -16,36 +20,15 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// Call the database initializer
-using (var services = app.Services.CreateScope())
+// Call the database initializer for ApplicationDbContext
+using (var scope = app.Services.CreateScope())
 {
-    var db = services.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    ApplicationDbInitializer.Initialize(db);
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    ApplicationDbInitializer.Initialize(context);
 }
 
 // Configure the HTTP request pipeline.
-if (App.Environment.IsDevelopment()) // Database used during development
-{
-    // Register the database context as a service. Use SQLite for this
-    services.AddDbContext<ExampleDbContext>(options =>
-        options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
-}
-else // Database used in all other environments (production etc)
-{
-    // Register the database context as a service. Use PostgreSQL server for this
-    services.AddDbContext<ExampleDbContext>(options =>
-        options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
-}
-
-// Call the database initializer
-using (var services = app.Services.CreateScope())
-{
-    var db = services.ServiceProvider.GetRequiredService<ExampleDbContext>();
-
-    if (App.Environment.IsDevelopment()) // Database initialization
-        ApplicationDbInitializer.Initialize(db);
-    else
-        await db.Database.MigrateAsync();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 

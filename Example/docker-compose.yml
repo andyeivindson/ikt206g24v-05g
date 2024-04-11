@@ -1,29 +1,31 @@
-version: '3.7'
-
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:80"
+      - "80:80"
     depends_on:
       - db
-      - proxy
 
   db:
-    image: postgres:latest
+    image: postgres
     environment:
       POSTGRES_USER: postgress
       POSTGRES_PASSWORD: Password1
       POSTGRES_DB: postgres
 
   proxy:
-    image: caddy:latest
+    image: caddy
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     ports:
-      - "80:80"
       - "443:443"
     depends_on:
       - web
+
+volumes:
+  caddy_data:
+  caddy_config:
